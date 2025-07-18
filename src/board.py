@@ -44,15 +44,17 @@ class Board:
         self.tiles = self.generate_solvable_board()
         
     def generate_solvable_board(self):
-        max_attempts = 20  # Reduced for performance
+        # Generate a board and ensure at least one pair can connect
+        max_attempts = 10
         
         for attempt in range(max_attempts):
             tiles = self.generate_board()
-            if self.quick_solvability_check(tiles):
+            if self.has_valid_move(tiles):
                 return tiles
         
-        # If random generation fails, use a guaranteed solvable layout
-        return self.generate_guaranteed_solvable_board()
+        # If no valid board found, use last generated board
+        # (very unlikely with many tiles)
+        return tiles
         
     def generate_board(self):
         # We have 34 SVG files (0-33)
@@ -127,51 +129,44 @@ class Board:
             self.hint_tiles = [tile1, tile2]
             self.hint_timer = 60  # Show for 1 second at 60 FPS
     
-    def is_board_solvable(self, test_tiles):
-        # Create a copy of the board state
-        board_copy = [[tile.tile_type if tile else None for tile in row] for row in test_tiles]
-        visible_copy = [[True if tile else False for tile in row] for row in test_tiles]
+    def shuffle_board(self):
+        # Collect all visible tiles and their types
+        visible_tiles = []
+        tile_types = []
         
-        # Try to solve the board
-        remaining = sum(sum(1 for cell in row if cell) for row in visible_copy)
+        for row in self.tiles:
+            for tile in row:
+                if tile and tile.visible:
+                    visible_tiles.append(tile)
+                    tile_types.append(tile.tile_type)
         
-        while remaining > 0:
-            found_match = False
+        if len(visible_tiles) < 2:
+            return  # Not enough tiles to shuffle
+        
+        # Try shuffling until we get a board with at least one valid move
+        max_shuffle_attempts = 50
+        original_types = tile_types.copy()
+        
+        for attempt in range(max_shuffle_attempts):
+            # Shuffle the tile types
+            random.shuffle(tile_types)
             
-            # Find any matching pair that can connect
-            for y1 in range(self.height):
-                for x1 in range(self.width):
-                    if not visible_copy[y1][x1]:
-                        continue
-                    
-                    for y2 in range(self.height):
-                        for x2 in range(self.width):
-                            if (x1, y1) == (x2, y2) or not visible_copy[y2][x2]:
-                                continue
-                            
-                            if board_copy[y1][x1] == board_copy[y2][x2]:
-                                if self.can_connect_test(x1, y1, x2, y2, visible_copy):
-                                    # Found a match, remove it
-                                    visible_copy[y1][x1] = False
-                                    visible_copy[y2][x2] = False
-                                    remaining -= 2
-                                    found_match = True
-                                    break
-                        
-                        if found_match:
-                            break
-                    
-                    if found_match:
-                        break
-                
-                if found_match:
-                    break
+            # Assign shuffled types back to tiles
+            for i, tile in enumerate(visible_tiles):
+                tile.tile_type = tile_types[i]
+                tile.load_image()
             
-            if not found_match:
-                # No more matches possible, board is unsolvable
-                return False
+            # Check if this configuration has at least one valid move
+            if self.has_any_valid_move():
+                print(f"Board shuffled successfully after {attempt + 1} attempts")
+                return
         
-        return True
+        # If no valid configuration found after many attempts,
+        # restore original (this is very unlikely)
+        print("Warning: Could not find valid shuffle configuration")
+        for i, tile in enumerate(visible_tiles):
+            tile.tile_type = original_types[i]
+            tile.load_image()
     
     def can_connect_test(self, x1, y1, x2, y2, visible_grid):
         if (x1, y1) == (x2, y2):
@@ -217,113 +212,38 @@ class Board:
         
         return False
     
-    def quick_solvability_check(self, test_tiles):
-        # Quick check: ensure at least some pairs can connect
-        # This is faster than full simulation
-        visible_copy = [[True if tile else False for tile in row] for row in test_tiles]
-        board_copy = [[tile.tile_type if tile else None for tile in row] for row in test_tiles]
-        
-        connectable_pairs = 0
-        checked_types = set()
-        
+    def has_valid_move(self, test_tiles):
+        # Check if there's at least one valid move
         for y1 in range(self.height):
             for x1 in range(self.width):
-                if not test_tiles[y1][x1] or board_copy[y1][x1] in checked_types:
+                tile1 = test_tiles[y1][x1] if test_tiles else self.tiles[y1][x1]
+                if not tile1 or not tile1.visible:
                     continue
                     
-                tile_type = board_copy[y1][x1]
-                checked_types.add(tile_type)
-                
-                # Find all tiles of this type
-                positions = []
                 for y2 in range(self.height):
                     for x2 in range(self.width):
-                        if test_tiles[y2][x2] and board_copy[y2][x2] == tile_type:
-                            positions.append((x2, y2))
-                
-                # Check if any pair can connect
-                for i in range(len(positions)):
-                    for j in range(i + 1, len(positions)):
-                        x1, y1 = positions[i]
-                        x2, y2 = positions[j]
-                        if self.can_connect_test(x1, y1, x2, y2, visible_copy):
-                            connectable_pairs += 1
-                            break
-                    if connectable_pairs > 0:
-                        break
-                
-                # If we found enough connectable pairs, board is likely solvable
-                if connectable_pairs >= 10:  # Threshold for quick check
-                    return True
-        
-        return connectable_pairs >= 5  # Lower threshold for final check
+                        if (x1, y1) == (x2, y2):
+                            continue
+                        tile2 = test_tiles[y2][x2] if test_tiles else self.tiles[y2][x2]
+                        if not tile2 or not tile2.visible:
+                            continue
+                            
+                        if tile1.tile_type == tile2.tile_type:
+                            if test_tiles:
+                                # For initial board generation
+                                visible_grid = [[True if t else False for t in row] for row in test_tiles]
+                                if self.can_connect_test(x1, y1, x2, y2, visible_grid):
+                                    return True
+                            else:
+                                # For current board state
+                                if self.can_connect(tile1, tile2):
+                                    return True
+        return False
     
-    def generate_guaranteed_solvable_board(self):
-        # Generate a board that's guaranteed to be solvable
-        # by placing pairs in a way that ensures connectivity
-        tile_types = []
-        
-        # Same distribution as before
-        for i in range(14):
-            tile_types.extend([i, i, i, i])
-        for i in range(14, 35):
-            tile_types.extend([i, i])
-        
-        # Place tiles in a snake pattern to ensure connectivity
-        tiles = [[None for _ in range(self.width)] for _ in range(self.height)]
-        positions = []
-        
-        # Create snake pattern
-        for y in range(self.height):
-            if y % 2 == 0:
-                for x in range(self.width):
-                    positions.append((x, y))
-            else:
-                for x in range(self.width - 1, -1, -1):
-                    positions.append((x, y))
-        
-        # Place pairs close to each other
-        idx = 0
-        while tile_types:
-            if idx < len(positions) - 1:
-                # Place pairs in adjacent positions when possible
-                tile_type = tile_types.pop()
-                x1, y1 = positions[idx]
-                tiles[y1][x1] = Tile(x1, y1, tile_type, self.tile_width, self.tile_height,
-                                   self.offset_x, self.offset_y)
-                
-                # Find another tile of same type
-                if tile_type in tile_types:
-                    tile_types.remove(tile_type)
-                    # Place it nearby
-                    x2, y2 = positions[idx + 1]
-                    tiles[y2][x2] = Tile(x2, y2, tile_type, self.tile_width, self.tile_height,
-                                       self.offset_x, self.offset_y)
-                    idx += 2
-                else:
-                    idx += 1
-            else:
-                # Fill remaining positions
-                tile_type = tile_types.pop()
-                x, y = positions[idx]
-                tiles[y][x] = Tile(x, y, tile_type, self.tile_width, self.tile_height,
-                                 self.offset_x, self.offset_y)
-                idx += 1
-        
-        # Shuffle some tiles to add randomness while maintaining solvability
-        import random
-        for _ in range(20):  # Limited shuffles
-            y1, x1 = random.randint(0, self.height-1), random.randint(0, self.width-1)
-            y2, x2 = random.randint(0, self.height-1), random.randint(0, self.width-1)
-            tile1 = tiles[y1][x1]
-            tile2 = tiles[y2][x2]
-            if tile1 is not None and tile2 is not None:
-                # Swap tile types
-                tile1.tile_type, tile2.tile_type = tile2.tile_type, tile1.tile_type
-                tile1.load_image()
-                tile2.load_image()
-        
-        return tiles
+    def has_any_valid_move(self):
+        # Check current board for any valid moves
+        return self.has_valid_move(None)
+    
     
     def update_position(self, new_offset_x, new_offset_y):
         self.offset_x = new_offset_x
@@ -499,7 +419,7 @@ class Board:
             hint_font_size = max(hint_font_size, 16)  # Minimum font size
             font_hint = pygame.font.Font(None, hint_font_size)
             text_color = (255, 255, 255) if button_enabled else (200, 200, 200)
-            text_hint = font_hint.render("Hint", True, text_color)
+            text_hint = font_hint.render("提示", True, text_color)
             text_rect = text_hint.get_rect(center=self.hint_button.center)
             screen.blit(text_hint, text_rect)
         
@@ -520,6 +440,9 @@ class Board:
         wait_frames = 30
         if self.animation_progress >= wait_frames:
             self.finish_animation()
+            # Check if there are still valid moves after removing tiles
+            if not self.has_any_valid_move():
+                self.shuffle_board()
             
     def get_pixel_position(self, grid_pos):
         x, y = grid_pos
