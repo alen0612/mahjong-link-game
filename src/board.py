@@ -18,6 +18,8 @@ class Board:
         self.animation_speed = 5
         self.animating = False
         self.tiles_to_remove = []
+        self.failed_match_timer = 0
+        self.failed_match_tiles = []
         self.initialize_board()
         
     def initialize_board(self):
@@ -28,9 +30,8 @@ class Board:
         
         for attempt in range(max_attempts):
             tile_types = []
-            num_tile_types = 36
-            
-            for i in range(num_tile_types):
+            # Use 36 tile types (0-35), each appears twice for 72 total tiles
+            for i in range(36):
                 tile_types.extend([i, i])
                 
             random.shuffle(tile_types)
@@ -125,7 +126,25 @@ class Board:
                     queue.append(((nx, ny), i, new_turns))
                     
         return False
+    
+    def update_position(self, new_offset_x, new_offset_y):
+        self.offset_x = new_offset_x
+        self.offset_y = new_offset_y
+        for row in self.tiles:
+            for tile in row:
+                if tile:
+                    tile.rect.x = tile.x * self.tile_size + self.offset_x
+                    tile.rect.y = tile.y * self.tile_size + self.offset_y
             
+    def update(self):
+        if self.failed_match_timer > 0:
+            self.failed_match_timer -= 1
+            if self.failed_match_timer == 0:
+                for tile in self.failed_match_tiles:
+                    tile.selected = False
+                self.selected_tiles.clear()
+                self.failed_match_tiles = []
+    
     def draw(self, screen):
         for row in self.tiles:
             for tile in row:
@@ -178,7 +197,7 @@ class Board:
         self.tiles_to_remove = []
                     
     def handle_click(self, pos):
-        if self.animating:
+        if self.animating or self.failed_match_timer > 0:
             return
             
         clicked_tile = None
@@ -219,9 +238,9 @@ class Board:
             self.animating = True
             self.tiles_to_remove = [tile1, tile2]
         else:
-            for tile in self.selected_tiles:
-                tile.selected = False
-            self.selected_tiles.clear()
+            # Show both tiles selected for a moment before clearing
+            self.failed_match_timer = 30  # 1 second at 60 FPS
+            self.failed_match_tiles = self.selected_tiles.copy()
         
     def can_connect(self, tile1, tile2):
         if tile1 == tile2:

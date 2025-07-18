@@ -14,7 +14,15 @@ class Tile:
         self.load_image()
         
     def load_image(self):
-        image_path = f"assets/tiles/{self.tile_type}.svg"
+        # Map tile types to actual file names
+        # 34 -> 0, 35 -> 1 (since they are duplicates)
+        display_type = self.tile_type
+        if self.tile_type == 34:
+            display_type = 0
+        elif self.tile_type == 35:
+            display_type = 1
+            
+        image_path = f"assets/tiles/{display_type}.svg"
         if os.path.exists(image_path):
             try:
                 self.image = pygame.image.load(image_path)
