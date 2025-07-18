@@ -65,13 +65,15 @@ class ScrollingBackground:
         self.rows = []  # Track tiles by row
         self.spawn_offset = 0  # Track position for new tiles
         
-        # Create diagonal rows
-        num_rows = 7
+        # Create rows to fill the entire screen
         self.row_configs = []
+        
+        # Calculate number of rows needed to fill screen
+        num_rows = int(screen_height / self.tile_spacing_y) + 2
         
         # Configure each row with different starting positions and y coordinates
         for i in range(num_rows):
-            y_base = 50 + i * self.tile_spacing_y
+            y_base = i * self.tile_spacing_y - self.tile_spacing_y  # Start above screen
             # Alternate rows start at different x positions for diagonal effect
             x_offset = (i % 2) * (self.tile_spacing_x / 2)
             self.row_configs.append({
