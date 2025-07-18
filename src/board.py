@@ -21,10 +21,13 @@ class Board:
         self.tiles_to_remove = []
         self.failed_match_timer = 0
         self.failed_match_tiles = []
+        
+        # [自動解題相關變數] - 如需啟用自動解題功能，請取消以下註解
         self.auto_solving = False
         self.solve_timer = 0
         self.solve_button = pygame.Rect(0, 0, 100, 40)
         self.update_solve_button_position()
+        
         self.game_completed = False
         self.fireworks = []
         self.firework_timer = 0
@@ -174,12 +177,13 @@ class Board:
                 self.selected_tiles.clear()
                 self.failed_match_tiles = []
                 
-        if self.auto_solving and not self.animating:
-            self.solve_timer += 1
-            # Speed up solving by checking every 15 frames instead of 30
-            if self.solve_timer >= 7:
-                self.solve_timer = 0
-                self.auto_solve_step()
+        # [自動解題更新邏輯] - 如需啟用，請取消以下註解
+        # if self.auto_solving and not self.animating:
+        #     self.solve_timer += 1
+        #     # Speed up solving by checking every 15 frames instead of 30
+        #     if self.solve_timer >= 7:
+        #         self.solve_timer = 0
+        #         self.auto_solve_step()
                 
         if self.game_completed:
             # Update fireworks
@@ -207,14 +211,15 @@ class Board:
         if self.animating and self.animation_path:
             self.draw_animation(screen)
             
+        # [自動解題按鈕] - 如需啟用，請取消以下註解
         # Draw solve button only if game is not completed
-        if not self.game_completed:
-            pygame.draw.rect(screen, (100, 100, 100), self.solve_button)
-            pygame.draw.rect(screen, (200, 200, 200), self.solve_button, 2)
-            font = pygame.font.Font(None, 24)
-            text = font.render("SOLVE", True, (255, 255, 255))
-            text_rect = text.get_rect(center=self.solve_button.center)
-            screen.blit(text, text_rect)
+        # if not self.game_completed:
+        #     pygame.draw.rect(screen, (100, 100, 100), self.solve_button)
+        #     pygame.draw.rect(screen, (200, 200, 200), self.solve_button, 2)
+        #     font = pygame.font.Font(None, 24)
+        #     text = font.render("SOLVE", True, (255, 255, 255))
+        #     text_rect = text.get_rect(center=self.solve_button.center)
+        #     screen.blit(text, text_rect)
             
         # Draw celebration if game is completed
         if self.game_completed:
@@ -309,10 +314,11 @@ class Board:
                 self.restart_game()
             return
             
+        # [自動解題按鈕點擊處理] - 如需啟用，請取消以下註解
         # Check if solve button was clicked
-        if self.solve_button.collidepoint(pos):
-            self.start_auto_solve()
-            return
+        # if self.solve_button.collidepoint(pos):
+        #     self.start_auto_solve()
+        #     return
             
         clicked_tile = None
         for row in self.tiles:
@@ -409,6 +415,13 @@ class Board:
                 if tile and tile.visible:
                     return False
         return True
+    
+    # [自動解題功能] - 如需啟用，請取消以下所有註解
+    # 步驟1: 取消 __init__ 中的自動解題相關變數註解
+    # 步驟2: 取消 update() 中的自動解題更新邏輯註解
+    # 步驟3: 取消 draw() 中的 SOLVE 按鈕繪製註解
+    # 步驟4: 取消 handle_click() 中的 SOLVE 按鈕點擊處理註解
+    # 步驟5: 取消以下兩個方法的註解
     
     def start_auto_solve(self):
         self.auto_solving = True
