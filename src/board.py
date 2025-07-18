@@ -12,6 +12,11 @@ class Board:
         self.offset_y = offset_y
         self.tiles = []
         self.selected_tiles = []
+        self.animation_path = []
+        self.animation_progress = 0
+        self.animation_speed = 5
+        self.animating = False
+        self.tiles_to_remove = []
         self.initialize_board()
         
     def initialize_board(self):
@@ -38,7 +43,55 @@ class Board:
                 if tile:
                     tile.draw(screen)
                     
+        if self.animating and self.animation_path:
+            self.draw_animation(screen)
+            
+    def draw_animation(self, screen):
+        if len(self.animation_path) < 2:
+            return
+            
+        segments_to_draw = min(self.animation_progress // self.animation_speed + 1, len(self.animation_path) - 1)
+        
+        for i in range(segments_to_draw):
+            if i + 1 < len(self.animation_path):
+                start_pos = self.get_pixel_position(self.animation_path[i])
+                end_pos = self.get_pixel_position(self.animation_path[i + 1])
+                
+                if i < segments_to_draw - 1:
+                    pygame.draw.line(screen, (255, 0, 0), start_pos, end_pos, 4)
+                else:
+                    progress = (self.animation_progress % self.animation_speed) / self.animation_speed
+                    current_x = start_pos[0] + (end_pos[0] - start_pos[0]) * progress
+                    current_y = start_pos[1] + (end_pos[1] - start_pos[1]) * progress
+                    pygame.draw.line(screen, (255, 0, 0), start_pos, (current_x, current_y), 4)
+        
+        self.animation_progress += 1
+        
+        if self.animation_progress >= (len(self.animation_path) - 1) * self.animation_speed:
+            self.finish_animation()
+            
+    def get_pixel_position(self, grid_pos):
+        x, y = grid_pos
+        pixel_x = x * self.tile_size + self.tile_size // 2 + self.offset_x
+        pixel_y = y * self.tile_size + self.tile_size // 2 + self.offset_y
+        return (pixel_x, pixel_y)
+        
+    def finish_animation(self):
+        for tile in self.tiles_to_remove:
+            tile.visible = False
+            tile.selected = False
+            self.tiles[tile.y][tile.x] = None
+            
+        self.selected_tiles.clear()
+        self.animation_path = []
+        self.animation_progress = 0
+        self.animating = False
+        self.tiles_to_remove = []
+                    
     def handle_click(self, pos):
+        if self.animating:
+            return
+            
         clicked_tile = None
         for row in self.tiles:
             for tile in row:
@@ -70,31 +123,32 @@ class Board:
     def check_match(self):
         tile1, tile2 = self.selected_tiles
         
-        if tile1.match(tile2) and self.can_connect(tile1, tile2):
-            tile1.visible = False
-            tile2.visible = False
-            self.tiles[tile1.y][tile1.x] = None
-            self.tiles[tile2.y][tile2.x] = None
-            
-        for tile in self.selected_tiles:
-            tile.selected = False
-        self.selected_tiles.clear()
+        path = self.can_connect(tile1, tile2)
+        if tile1.match(tile2) and path:
+            self.animation_path = path
+            self.animation_progress = 0
+            self.animating = True
+            self.tiles_to_remove = [tile1, tile2]
+        else:
+            for tile in self.selected_tiles:
+                tile.selected = False
+            self.selected_tiles.clear()
         
     def can_connect(self, tile1, tile2):
         if tile1 == tile2:
-            return False
+            return None
             
         pos1 = (tile1.x, tile1.y)
         pos2 = (tile2.x, tile2.y)
         
-        queue = deque([(pos1, -1, -1, -1)])
+        queue = deque([(pos1, -1, -1, -1, [pos1])])
         visited = set()
         
         while queue:
-            (x, y), prev_dir, turns = queue.popleft()
+            (x, y), prev_dir, turns, path = queue.popleft()
             
             if (x, y) == pos2:
-                return True
+                return path
                 
             if turns > 2:
                 continue
@@ -122,9 +176,10 @@ class Board:
                     new_turns += 1
                     
                 if new_turns <= 2:
-                    queue.append(((nx, ny), i, new_turns))
+                    new_path = path + [(nx, ny)]
+                    queue.append(((nx, ny), i, new_turns, new_path))
                     
-        return False
+        return None
         
     def is_game_complete(self):
         for row in self.tiles:
