@@ -5,21 +5,25 @@ from copy import deepcopy
 from tile import Tile
 
 class Board:
-    def __init__(self, width=12, height=6, tile_size=80, offset_x=0, offset_y=0):
+    def __init__(self, width=12, height=6, tile_width=60, tile_height=80, offset_x=0, offset_y=0):
         self.width = width
         self.height = height
-        self.tile_size = tile_size
+        self.tile_width = tile_width
+        self.tile_height = tile_height
         self.offset_x = offset_x
         self.offset_y = offset_y
         self.tiles = []
         self.selected_tiles = []
         self.animation_path = []
         self.animation_progress = 0
-        self.animation_speed = 5
         self.animating = False
         self.tiles_to_remove = []
         self.failed_match_timer = 0
         self.failed_match_tiles = []
+        self.auto_solving = False
+        self.solve_timer = 0
+        self.solve_button = pygame.Rect(0, 0, 100, 40)
+        self.update_solve_button_position()
         self.initialize_board()
         
     def initialize_board(self):
@@ -41,7 +45,7 @@ class Board:
                 row = []
                 for x in range(self.width):
                     tile_type = tile_types.pop()
-                    tile = Tile(x, y, tile_type, self.tile_size, self.offset_x, self.offset_y)
+                    tile = Tile(x, y, tile_type, self.tile_width, self.tile_height, self.offset_x, self.offset_y)
                     row.append(tile)
                 tiles.append(row)
                 
@@ -133,8 +137,17 @@ class Board:
         for row in self.tiles:
             for tile in row:
                 if tile:
-                    tile.rect.x = tile.x * self.tile_size + self.offset_x
-                    tile.rect.y = tile.y * self.tile_size + self.offset_y
+                    tile.rect.x = tile.x * self.tile_width + self.offset_x
+                    tile.rect.y = tile.y * self.tile_height + self.offset_y
+        self.update_solve_button_position()
+    
+    def update_solve_button_position(self):
+        # Position button in bottom-right corner with some margin
+        import pygame
+        info = pygame.display.get_surface()
+        if info:
+            self.solve_button.x = info.get_width() - self.solve_button.width - 20
+            self.solve_button.y = info.get_height() - self.solve_button.height - 20
             
     def update(self):
         if self.failed_match_timer > 0:
@@ -144,6 +157,13 @@ class Board:
                     tile.selected = False
                 self.selected_tiles.clear()
                 self.failed_match_tiles = []
+                
+        if self.auto_solving and not self.animating:
+            self.solve_timer += 1
+            # Speed up solving by checking every 15 frames instead of 30
+            if self.solve_timer >= 7:
+                self.solve_timer = 0
+                self.auto_solve_step()
     
     def draw(self, screen):
         for row in self.tiles:
@@ -154,34 +174,35 @@ class Board:
         if self.animating and self.animation_path:
             self.draw_animation(screen)
             
+        # Draw solve button
+        pygame.draw.rect(screen, (100, 100, 100), self.solve_button)
+        pygame.draw.rect(screen, (200, 200, 200), self.solve_button, 2)
+        font = pygame.font.Font(None, 24)
+        text = font.render("SOLVE", True, (255, 255, 255))
+        text_rect = text.get_rect(center=self.solve_button.center)
+        screen.blit(text, text_rect)
+            
     def draw_animation(self, screen):
         if len(self.animation_path) < 2:
             return
             
-        segments_to_draw = min(self.animation_progress // self.animation_speed + 1, len(self.animation_path) - 1)
-        
-        for i in range(segments_to_draw):
-            if i + 1 < len(self.animation_path):
-                start_pos = self.get_pixel_position(self.animation_path[i])
-                end_pos = self.get_pixel_position(self.animation_path[i + 1])
-                
-                if i < segments_to_draw - 1:
-                    pygame.draw.line(screen, (255, 0, 0), start_pos, end_pos, 4)
-                else:
-                    progress = (self.animation_progress % self.animation_speed) / self.animation_speed
-                    current_x = start_pos[0] + (end_pos[0] - start_pos[0]) * progress
-                    current_y = start_pos[1] + (end_pos[1] - start_pos[1]) * progress
-                    pygame.draw.line(screen, (255, 0, 0), start_pos, (current_x, current_y), 4)
+        # Draw the complete path instantly
+        for i in range(len(self.animation_path) - 1):
+            start_pos = self.get_pixel_position(self.animation_path[i])
+            end_pos = self.get_pixel_position(self.animation_path[i + 1])
+            pygame.draw.line(screen, (255, 0, 0), start_pos, end_pos, 4)
         
         self.animation_progress += 1
         
-        if self.animation_progress >= (len(self.animation_path) - 1) * self.animation_speed:
+        # Wait for 0.5 seconds normally, or 0.25 seconds during auto-solve
+        wait_frames = 7 if self.auto_solving else 30
+        if self.animation_progress >= wait_frames:
             self.finish_animation()
             
     def get_pixel_position(self, grid_pos):
         x, y = grid_pos
-        pixel_x = x * self.tile_size + self.tile_size // 2 + self.offset_x
-        pixel_y = y * self.tile_size + self.tile_size // 2 + self.offset_y
+        pixel_x = x * self.tile_width + self.tile_width // 2 + self.offset_x
+        pixel_y = y * self.tile_height + self.tile_height // 2 + self.offset_y
         return (pixel_x, pixel_y)
         
     def finish_animation(self):
@@ -195,9 +216,18 @@ class Board:
         self.animation_progress = 0
         self.animating = False
         self.tiles_to_remove = []
+        
+        # Check if game is complete during auto-solve
+        if self.auto_solving and self.is_game_complete():
+            self.auto_solving = False
                     
     def handle_click(self, pos):
-        if self.animating or self.failed_match_timer > 0:
+        if self.animating or self.failed_match_timer > 0 or self.auto_solving:
+            return
+            
+        # Check if solve button was clicked
+        if self.solve_button.collidepoint(pos):
+            self.start_auto_solve()
             return
             
         clicked_tile = None
@@ -295,3 +325,44 @@ class Board:
                 if tile and tile.visible:
                     return False
         return True
+    
+    def start_auto_solve(self):
+        self.auto_solving = True
+        self.solve_timer = 0
+        # Clear any existing selections
+        for tile in self.selected_tiles:
+            tile.selected = False
+        self.selected_tiles.clear()
+        
+    def auto_solve_step(self):
+        # Find a matching pair
+        for y1 in range(self.height):
+            for x1 in range(self.width):
+                tile1 = self.tiles[y1][x1]
+                if not tile1 or not tile1.visible:
+                    continue
+                    
+                for y2 in range(self.height):
+                    for x2 in range(self.width):
+                        if (x1, y1) == (x2, y2):
+                            continue
+                        tile2 = self.tiles[y2][x2]
+                        if not tile2 or not tile2.visible:
+                            continue
+                            
+                        if tile1.match(tile2):
+                            path = self.can_connect(tile1, tile2)
+                            if path:
+                                # Found a match, select and remove them
+                                self.selected_tiles = [tile1, tile2]
+                                tile1.selected = True
+                                tile2.selected = True
+                                # Start the animation
+                                self.animation_path = path
+                                self.animation_progress = 0
+                                self.animating = True
+                                self.tiles_to_remove = [tile1, tile2]
+                                return
+        
+        # No more matches found, stop auto-solving
+        self.auto_solving = False

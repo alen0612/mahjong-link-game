@@ -4,7 +4,8 @@ from board import Board
 
 INITIAL_WIDTH = 1200
 INITIAL_HEIGHT = 800
-TILE_SIZE = 80
+TILE_WIDTH = 60
+TILE_HEIGHT = 80  # 3:4 aspect ratio
 BOARD_WIDTH = 12
 BOARD_HEIGHT = 6
 BACKGROUND_COLOR = (40, 40, 40)
@@ -16,8 +17,8 @@ def main():
     screen = pygame.display.set_mode((INITIAL_WIDTH, INITIAL_HEIGHT), pygame.RESIZABLE)
     pygame.display.set_caption("Mahjong Link Game")
     
-    board_pixel_width = BOARD_WIDTH * TILE_SIZE
-    board_pixel_height = BOARD_HEIGHT * TILE_SIZE
+    board_pixel_width = BOARD_WIDTH * TILE_WIDTH
+    board_pixel_height = BOARD_HEIGHT * TILE_HEIGHT
     
     current_width, current_height = INITIAL_WIDTH, INITIAL_HEIGHT
     
@@ -27,7 +28,7 @@ def main():
         return offset_x, offset_y
     
     offset_x, offset_y = calculate_board_position()
-    board = Board(BOARD_WIDTH, BOARD_HEIGHT, TILE_SIZE, offset_x, offset_y)
+    board = Board(BOARD_WIDTH, BOARD_HEIGHT, TILE_WIDTH, TILE_HEIGHT, offset_x, offset_y)
     
     clock = pygame.time.Clock()
     running = True

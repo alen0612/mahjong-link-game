@@ -2,14 +2,15 @@ import pygame
 import os
 
 class Tile:
-    def __init__(self, x, y, tile_type, size=80, offset_x=0, offset_y=0):
+    def __init__(self, x, y, tile_type, width=60, height=80, offset_x=0, offset_y=0):
         self.x = x
         self.y = y
         self.tile_type = tile_type
-        self.size = size
+        self.width = width
+        self.height = height
         self.selected = False
         self.visible = True
-        self.rect = pygame.Rect(x * size + offset_x, y * size + offset_y, size, size)
+        self.rect = pygame.Rect(x * width + offset_x, y * height + offset_y, width, height)
         self.image = None
         self.load_image()
         
@@ -26,7 +27,7 @@ class Tile:
         if os.path.exists(image_path):
             try:
                 self.image = pygame.image.load(image_path)
-                self.image = pygame.transform.scale(self.image, (self.size, self.size))
+                self.image = pygame.transform.scale(self.image, (self.width, self.height))
             except:
                 self.image = None
         
@@ -54,7 +55,7 @@ class Tile:
             screen.blit(text, text_rect)
             
         if self.selected:
-            overlay = pygame.Surface((self.size, self.size))
+            overlay = pygame.Surface((self.width, self.height))
             overlay.set_alpha(100)
             overlay.fill((255, 255, 0))
             screen.blit(overlay, self.rect.topleft)
