@@ -58,35 +58,73 @@ class ScrollingBackground:
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.tiles = []
-        self.spawn_timer = 0
-        self.spawn_interval = 60  # Spawn new tile every 60 frames
+        self.tile_spacing_x = 180  # Horizontal spacing
+        self.tile_spacing_y = 120  # Vertical spacing for diagonal
+        self.base_speed = 1.0  # Fixed speed for all tiles
+        self.rows = []  # Track tiles by row
+        self.spawn_offset = 0  # Track position for new tiles
         
-        # Initialize with some tiles
-        for i in range(8):
-            self.spawn_tile(initial_x=i * 150)
+        # Create diagonal rows
+        num_rows = 7
+        self.row_configs = []
+        
+        # Configure each row with different starting positions and y coordinates
+        for i in range(num_rows):
+            y_base = 50 + i * self.tile_spacing_y
+            # Alternate rows start at different x positions for diagonal effect
+            x_offset = (i % 2) * (self.tile_spacing_x / 2)
+            self.row_configs.append({
+                'y': y_base,
+                'x_offset': x_offset,
+                'tiles': []
+            })
+        
+        # Initialize with tiles
+        for row_idx, config in enumerate(self.row_configs):
+            # Start with enough tiles to fill the screen
+            num_initial_tiles = int(screen_width / self.tile_spacing_x) + 3
+            for i in range(num_initial_tiles):
+                x = config['x_offset'] + i * self.tile_spacing_x - 200
+                self.spawn_tile_in_row(row_idx, x)
             
-    def spawn_tile(self, initial_x=None):
-        rows = 3  # Number of rows of scrolling tiles
-        for row in range(rows):
-            x = initial_x if initial_x is not None else -100
-            y = 100 + row * 200 + random.randint(-30, 30)
-            tile_type = random.randint(0, 35)
-            speed = random.uniform(0.8, 1.5)
-            self.tiles.append(ScrollingTile(x, y, tile_type, speed))
+    def spawn_tile_in_row(self, row_idx, x_pos):
+        config = self.row_configs[row_idx]
+        y = config['y']
+        tile_type = random.randint(0, 31)
+        tile = ScrollingTile(x_pos, y, tile_type, self.base_speed)
+        self.tiles.append(tile)
+        config['tiles'].append(tile)
             
     def update(self):
-        # Update existing tiles
-        for tile in self.tiles[:]:
-            tile.update()
-            # Remove tiles that have scrolled off screen
-            if tile.x > self.screen_width + 100:
+        # Update all tiles
+        for config in self.row_configs:
+            tiles_to_remove = []
+            
+            for tile in config['tiles']:
+                tile.update()
+                # Mark tiles that have scrolled off screen for removal
+                if tile.x > self.screen_width + 100:
+                    tiles_to_remove.append(tile)
+            
+            # Remove tiles that are off screen
+            for tile in tiles_to_remove:
+                config['tiles'].remove(tile)
                 self.tiles.remove(tile)
-                
-        # Spawn new tiles periodically
-        self.spawn_timer += 1
-        if self.spawn_timer >= self.spawn_interval:
-            self.spawn_timer = 0
-            self.spawn_tile()
+        
+        # Check each row to see if new tiles are needed
+        for row_idx, config in enumerate(self.row_configs):
+            tiles = config['tiles']
+            
+            # Need to check the leftmost tile (first in list since we spawn from left)
+            if tiles:
+                leftmost_tile = min(tiles, key=lambda t: t.x)
+                # Spawn new tile if the leftmost has moved far enough from the left edge
+                if leftmost_tile.x > -50:
+                    new_x = leftmost_tile.x - self.tile_spacing_x
+                    self.spawn_tile_in_row(row_idx, new_x)
+            else:
+                # No tiles in this row, spawn one
+                self.spawn_tile_in_row(row_idx, -100)
             
     def draw(self, screen):
         for tile in self.tiles:

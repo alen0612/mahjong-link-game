@@ -6,7 +6,7 @@ from tile import Tile
 from particle import Firework
 
 class Board:
-    def __init__(self, width=12, height=6, tile_width=60, tile_height=80, offset_x=0, offset_y=0):
+    def __init__(self, width=16, height=8, tile_width=60, tile_height=80, offset_x=0, offset_y=0):
         self.width = width
         self.height = height
         self.tile_width = tile_width
@@ -40,9 +40,10 @@ class Board:
         
         for attempt in range(max_attempts):
             tile_types = []
-            # Use 36 tile types (0-35), each appears twice for 72 total tiles
-            for i in range(36):
-                tile_types.extend([i, i])
+            # Use 32 tile types (0-31), each appears 4 times for 128 total tiles
+            # This ensures balanced distribution
+            for i in range(32):
+                tile_types.extend([i, i, i, i])  # Each type appears exactly 4 times
                 
             random.shuffle(tile_types)
             
