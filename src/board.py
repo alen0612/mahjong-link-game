@@ -452,12 +452,8 @@ class Board:
             scale_factor = min(screen_width / 1600, screen_height / 1000)  # Using initial dimensions
             congrats_font_size = int(96 * scale_factor)
             congrats_font_size = max(congrats_font_size, 48)  # Minimum font size
-            try:
-                # Try to use Chinese font
-                font_big = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", congrats_font_size)
-            except (IOError, OSError):
-                # Fallback to English if Chinese font not available
-                font_big = pygame.font.Font(None, int(congrats_font_size * 0.75))
+            # Use default font for better compatibility
+            font_big = pygame.font.Font(None, congrats_font_size)
                 
             # Draw shadow
             text_shadow = font_big.render("恭喜!!", True, (50, 30, 0))
@@ -479,10 +475,8 @@ class Board:
             # Scale button font
             button_font_size = int(36 * scale_factor)
             button_font_size = max(button_font_size, 20)  # Minimum font size
-            try:
-                font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", button_font_size)
-            except (IOError, OSError):
-                font_button = pygame.font.Font(None, button_font_size)
+            # Use default font for better compatibility
+            font_button = pygame.font.Font(None, button_font_size)
                 
             text_play_again = font_button.render("再來一局", True, (255, 255, 255))
             text_rect = text_play_again.get_rect(center=self.play_again_button.center)
