@@ -5,6 +5,7 @@ import pygame
 from board import Board
 from scrolling_background import ScrollingBackground
 from font_utils import get_chinese_font
+from utils import get_asset_path
 
 # Game states
 START_SCREEN = 0
