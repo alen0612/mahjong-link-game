@@ -230,7 +230,7 @@ class Board:
         pos1 = (tile1.x, tile1.y)
         pos2 = (tile2.x, tile2.y)
         
-        queue = deque([(pos1, -1, -1, -1, [pos1])])
+        queue = deque([(pos1, -1, -1, [pos1])])
         visited = set()
         
         while queue:
