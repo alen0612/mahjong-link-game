@@ -1,6 +1,7 @@
 import random
 import pygame
 from collections import deque
+from copy import deepcopy
 from tile import Tile
 
 class Board:
@@ -20,22 +21,110 @@ class Board:
         self.initialize_board()
         
     def initialize_board(self):
-        tile_types = []
-        num_tile_types = 36
+        self.tiles = self.generate_solvable_board()
         
-        for i in range(num_tile_types):
-            tile_types.extend([i, i])
+    def generate_solvable_board(self):
+        max_attempts = 100
+        
+        for attempt in range(max_attempts):
+            tile_types = []
+            num_tile_types = 36
             
-        random.shuffle(tile_types)
+            for i in range(num_tile_types):
+                tile_types.extend([i, i])
+                
+            random.shuffle(tile_types)
+            
+            tiles = []
+            for y in range(self.height):
+                row = []
+                for x in range(self.width):
+                    tile_type = tile_types.pop()
+                    tile = Tile(x, y, tile_type, self.tile_size, self.offset_x, self.offset_y)
+                    row.append(tile)
+                tiles.append(row)
+                
+            if self.is_board_solvable(tiles):
+                return tiles
+                
+        return tiles
         
-        self.tiles = []
-        for y in range(self.height):
-            row = []
-            for x in range(self.width):
-                tile_type = tile_types.pop()
-                tile = Tile(x, y, tile_type, self.tile_size, self.offset_x, self.offset_y)
-                row.append(tile)
-            self.tiles.append(row)
+    def is_board_solvable(self, test_tiles):
+        board_copy = [[tile.tile_type if tile else None for tile in row] for row in test_tiles]
+        visible_copy = [[True if tile else False for tile in row] for row in test_tiles]
+        
+        def find_match():
+            for y1 in range(self.height):
+                for x1 in range(self.width):
+                    if not visible_copy[y1][x1]:
+                        continue
+                        
+                    for y2 in range(self.height):
+                        for x2 in range(self.width):
+                            if (x1, y1) == (x2, y2) or not visible_copy[y2][x2]:
+                                continue
+                                
+                            if board_copy[y1][x1] == board_copy[y2][x2]:
+                                if self.can_connect_test(x1, y1, x2, y2, visible_copy):
+                                    return (x1, y1, x2, y2)
+            return None
+            
+        remaining = sum(sum(1 for cell in row if cell) for row in visible_copy)
+        
+        while remaining > 0:
+            match = find_match()
+            if not match:
+                return False
+                
+            x1, y1, x2, y2 = match
+            visible_copy[y1][x1] = False
+            visible_copy[y2][x2] = False
+            remaining -= 2
+            
+        return True
+        
+    def can_connect_test(self, x1, y1, x2, y2, visible_grid):
+        if (x1, y1) == (x2, y2):
+            return False
+            
+        queue = deque([((x1, y1), -1, -1)])
+        visited = set()
+        
+        while queue:
+            (x, y), prev_dir, turns = queue.popleft()
+            
+            if (x, y) == (x2, y2):
+                return True
+                
+            if turns > 2:
+                continue
+                
+            state = (x, y, prev_dir, turns)
+            if state in visited:
+                continue
+            visited.add(state)
+            
+            directions = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+            
+            for i, (dx, dy) in enumerate(directions):
+                nx, ny = x + dx, y + dy
+                
+                if nx < -1 or nx > self.width or ny < -1 or ny > self.height:
+                    continue
+                    
+                if (nx, ny) != (x2, y2):
+                    if 0 <= nx < self.width and 0 <= ny < self.height:
+                        if visible_grid[ny][nx]:
+                            continue
+                
+                new_turns = turns
+                if prev_dir != -1 and prev_dir != i:
+                    new_turns += 1
+                    
+                if new_turns <= 2:
+                    queue.append(((nx, ny), i, new_turns))
+                    
+        return False
             
     def draw(self, screen):
         for row in self.tiles:
