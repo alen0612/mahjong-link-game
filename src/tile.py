@@ -1,6 +1,7 @@
 import os
 
 import pygame
+from utils import resource_path
 
 class Tile:
     def __init__(self, x, y, tile_type, width=60, height=80, offset_x=0, offset_y=0):
@@ -24,13 +25,12 @@ class Tile:
         elif self.tile_type == 35:
             display_type = 1
             
-        image_path = f"assets/tiles/{display_type}.svg"
-        if os.path.exists(image_path):
-            try:
-                self.image = pygame.image.load(image_path)
-                self.image = pygame.transform.scale(self.image, (self.width, self.height))
-            except (pygame.error, IOError, OSError):
-                self.image = None
+        image_path = resource_path(os.path.join("assets", "tiles", f"{display_type}.svg"))
+        try:
+            self.image = pygame.image.load(image_path)
+            self.image = pygame.transform.scale(self.image, (self.width, self.height))
+        except (pygame.error, IOError, OSError):
+            self.image = None
         
     def draw(self, screen):
         if not self.visible:
@@ -50,7 +50,9 @@ class Tile:
             pygame.draw.rect(screen, color, self.rect)
             pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
             
-            font = pygame.font.Font(None, 36)
+            # Calculate font size based on tile size
+            font_size = max(12, min(self.width // 3, 36))
+            font = pygame.font.Font(None, font_size)
             text = font.render(str(self.tile_type), True, (255, 255, 255))
             text_rect = text.get_rect(center=self.rect.center)
             screen.blit(text, text_rect)
@@ -70,3 +72,11 @@ class Tile:
         
     def match(self, other):
         return self.tile_type == other.tile_type
+    
+    def update_size_and_position(self, new_width, new_height, new_offset_x, new_offset_y):
+        """Update tile size and position when window is resized"""
+        self.width = new_width
+        self.height = new_height
+        self.rect = pygame.Rect(self.x * new_width + new_offset_x, self.y * new_height + new_offset_y, new_width, new_height)
+        # Reload image with new size
+        self.load_image()

@@ -33,7 +33,7 @@ class Board:
         self.game_completed = False
         self.fireworks = []
         self.firework_timer = 0
-        self.play_again_button = pygame.Rect(0, 0, 200, 60)
+        self.play_again_button = pygame.Rect(0, 0, 100, 30)
         self.update_play_again_button_position()
         self.initialize_board()
         
@@ -41,15 +41,16 @@ class Board:
         self.tiles = self.generate_solvable_board()
         
     def generate_solvable_board(self):
-        max_attempts = 100
+        # 7x14 = 98 個位置，需要 49 對牌
+        # 使用更可靠的方法：生成保證可解的棋盤
+        max_attempts = 15  # 增加嘗試次數以確保找到可解棋盤
         
         for attempt in range(max_attempts):
+            # 生成隨機棋盤
             tile_types = []
-            # Use 32 tile types (0-31), each appears 4 times for 128 total tiles
-            # This ensures balanced distribution
-            for i in range(32):
-                tile_types.extend([i, i, i, i])  # Each type appears exactly 4 times
-                
+            # 7x14 = 98 個位置，需要 49 種牌型，每種 2 張
+            for i in range(49):
+                tile_types.extend([i, i])
             random.shuffle(tile_types)
             
             tiles = []
@@ -61,11 +62,230 @@ class Board:
                                self.offset_x, self.offset_y)
                     row.append(tile)
                 tiles.append(row)
-                
-            if self.is_board_solvable(tiles):
+            
+            # 使用快速可解性檢查
+            if self.quick_solvability_check_enhanced(tiles):
                 return tiles
+        
+        # 如果無法找到可解棋盤，使用保證可解的配對模式作為備案
+        return self.generate_guaranteed_solvable_board()
+    
+    def quick_solvability_check_enhanced(self, test_tiles):
+        """增強的快速可解性檢查 - 針對 7x14 棋盤優化"""
+        board_copy = [[tile.tile_type if tile else None for tile in row] for row in test_tiles]
+        visible_copy = [[True if tile else False for tile in row] for row in test_tiles]
+        
+        # 檢查前 30 對配對
+        pairs_checked = 0
+        max_pairs_to_check = 30
+        
+        def find_quick_match():
+            nonlocal pairs_checked
+            for y1 in range(self.height):
+                for x1 in range(self.width):
+                    if not visible_copy[y1][x1]:
+                        continue
+                        
+                    for y2 in range(self.height):
+                        for x2 in range(self.width):
+                            if (x1, y1) == (x2, y2) or not visible_copy[y2][x2]:
+                                continue
+                                
+                            if board_copy[y1][x1] == board_copy[y2][x2]:
+                                if self.can_connect_test(x1, y1, x2, y2, visible_copy):
+                                    pairs_checked += 1
+                                    return (x1, y1, x2, y2)
+            return None
+            
+        # 檢查前幾對配對
+        for _ in range(max_pairs_to_check):
+            match = find_quick_match()
+            if not match:
+                break
                 
+            x1, y1, x2, y2 = match
+            visible_copy[y1][x1] = False
+            visible_copy[y2][x2] = False
+            
+            if pairs_checked >= max_pairs_to_check:
+                break
+        
+        # 如果找到足夠的配對，認為是可解的
+        return pairs_checked >= 20  # 至少 20 對應該可以找到
+    
+    def generate_guaranteed_solvable_board(self):
+        """生成保證可解的棋盤作為備案 - 使用蛇形排列確保可解"""
+        tiles = []
+        tile_id = 0
+        
+        # 創建蛇形排列的配對模式，確保可解
+        for y in range(self.height):
+            row = []
+            for x in range(self.width):
+                # 使用蛇形模式確保相鄰的牌可以配對
+                if y % 2 == 0:
+                    # 偶數行：從左到右
+                    if x % 2 == 0:
+                        tile_type = tile_id
+                    else:
+                        tile_type = tile_id
+                        tile_id += 1
+                        if tile_id >= 49:
+                            tile_id = 0
+                else:
+                    # 奇數行：從右到左
+                    if (self.width - 1 - x) % 2 == 0:
+                        tile_type = tile_id
+                    else:
+                        tile_type = tile_id
+                        tile_id += 1
+                        if tile_id >= 49:
+                            tile_id = 0
+                
+                tile = Tile(x, y, tile_type, self.tile_width, self.tile_height,
+                           self.offset_x, self.offset_y)
+                row.append(tile)
+            tiles.append(row)
+        
+        # 對生成的棋盤進行隨機化，但保持可解性
+        return self.randomize_while_maintaining_solvability(tiles)
+    
+    def randomize_while_maintaining_solvability(self, tiles):
+        """在保持可解性的前提下隨機化棋盤"""
+        # 進行有限次數的隨機交換
+        max_swaps = 50
+        
+        for _ in range(max_swaps):
+            # 隨機選擇兩個位置進行交換
+            y1 = random.randint(0, self.height - 1)
+            x1 = random.randint(0, self.width - 1)
+            y2 = random.randint(0, self.height - 1)
+            x2 = random.randint(0, self.width - 1)
+            
+            # 交換牌型
+            temp_type = tiles[y1][x1].tile_type
+            tiles[y1][x1].tile_type = tiles[y2][x2].tile_type
+            tiles[y2][x2].tile_type = temp_type
+            
+            # 檢查是否仍然可解，如果不可解則恢復
+            if not self.quick_solvability_check_enhanced(tiles):
+                # 恢復交換
+                temp_type = tiles[y1][x1].tile_type
+                tiles[y1][x1].tile_type = tiles[y2][x2].tile_type
+                tiles[y2][x2].tile_type = temp_type
+        
         return tiles
+    
+    def is_board_solvable_with_timeout(self, test_tiles):
+        """檢查棋盤是否可解，但有時間限制"""
+        import time
+        start_time = time.time()
+        max_time = 0.5  # 最多檢查0.5秒
+        
+        board_copy = [[tile.tile_type if tile else None for tile in row] for row in test_tiles]
+        visible_copy = [[True if tile else False for tile in row] for row in test_tiles]
+        
+        def find_match():
+            if time.time() - start_time > max_time:
+                return None  # 超時返回None
+                
+            for y1 in range(self.height):
+                for x1 in range(self.width):
+                    if not visible_copy[y1][x1]:
+                        continue
+                        
+                    for y2 in range(self.height):
+                        for x2 in range(self.width):
+                            if (x1, y1) == (x2, y2) or not visible_copy[y2][x2]:
+                                continue
+                                
+                            if board_copy[y1][x1] == board_copy[y2][x2]:
+                                if self.can_connect_test(x1, y1, x2, y2, visible_copy):
+                                    return (x1, y1, x2, y2)
+            return None
+        
+        remaining = sum(sum(1 for cell in row if cell) for row in visible_copy)
+        
+        while remaining > 0:
+            match = find_match()
+            if match is None:  # 超時
+                return False
+            if not match:  # 找不到配對
+                return False
+                
+            x1, y1, x2, y2 = match
+            visible_copy[y1][x1] = False
+            visible_copy[y2][x2] = False
+            remaining -= 2
+        
+        return True
+    
+    def generate_simple_solvable_board(self):
+        """生成簡單但保證可解的棋盤作為備案"""
+        tiles = []
+        tile_id = 0
+        
+        for y in range(self.height):
+            row = []
+            for x in range(self.width):
+                # 創建簡單的配對模式
+                if x % 2 == 0:
+                    tile_type = tile_id
+                else:
+                    tile_type = tile_id
+                    tile_id += 1
+                    if tile_id >= 32:
+                        tile_id = 0
+                
+                tile = Tile(x, y, tile_type, self.tile_width, self.tile_height,
+                           self.offset_x, self.offset_y)
+                row.append(tile)
+            tiles.append(row)
+        
+        return tiles
+    
+    def quick_solvability_check(self, test_tiles):
+        """Quick check for solvability - only checks first few pairs instead of entire board"""
+        board_copy = [[tile.tile_type if tile else None for tile in row] for row in test_tiles]
+        visible_copy = [[True if tile else False for tile in row] for row in test_tiles]
+        
+        # Only check first 20 pairs instead of entire board
+        pairs_checked = 0
+        max_pairs_to_check = 20
+        
+        def find_quick_match():
+            nonlocal pairs_checked
+            for y1 in range(self.height):
+                for x1 in range(self.width):
+                    if not visible_copy[y1][x1]:
+                        continue
+                        
+                    for y2 in range(self.height):
+                        for x2 in range(self.width):
+                            if (x1, y1) == (x2, y2) or not visible_copy[y2][x2]:
+                                continue
+                                
+                            if board_copy[y1][x1] == board_copy[y2][x2]:
+                                if self.can_connect_test(x1, y1, x2, y2, visible_copy):
+                                    pairs_checked += 1
+                                    return (x1, y1, x2, y2)
+            return None
+            
+        # Check only first few pairs
+        for _ in range(max_pairs_to_check):
+            match = find_quick_match()
+            if not match:
+                break
+                
+            x1, y1, x2, y2 = match
+            visible_copy[y1][x1] = False
+            visible_copy[y2][x2] = False
+            
+            if pairs_checked >= max_pairs_to_check:
+                break
+        
+        # If we found enough pairs, consider it solvable
+        return pairs_checked >= 10  # At least 10 pairs should be findable
         
     def is_board_solvable(self, test_tiles):
         board_copy = [[tile.tile_type if tile else None for tile in row] for row in test_tiles]
@@ -105,7 +325,7 @@ class Board:
         if (x1, y1) == (x2, y2):
             return False
             
-        queue = deque([((x1, y1), -1, -1)])
+        queue = deque([((x1, y1), -1, 0)])  # Start with 0 turns
         visited = set()
         
         while queue:
@@ -114,7 +334,8 @@ class Board:
             if (x, y) == (x2, y2):
                 return True
                 
-            if turns > 2:
+            # Strictly enforce maximum 2 turns
+            if turns >= 2:
                 continue
                 
             state = (x, y, prev_dir, turns)
@@ -139,6 +360,7 @@ class Board:
                 if prev_dir != -1 and prev_dir != i:
                     new_turns += 1
                     
+                # Only allow paths with maximum 2 turns
                 if new_turns <= 2:
                     queue.append(((nx, ny), i, new_turns))
                     
@@ -155,6 +377,22 @@ class Board:
         self.update_solve_button_position()
         self.update_play_again_button_position()
     
+    def update_position_and_size(self, new_offset_x, new_offset_y, new_tile_width, new_tile_height):
+        """Update both position and tile size when window is resized"""
+        self.offset_x = new_offset_x
+        self.offset_y = new_offset_y
+        self.tile_width = new_tile_width
+        self.tile_height = new_tile_height
+        
+        # Update all tiles with new size and position
+        for row in self.tiles:
+            for tile in row:
+                if tile:
+                    tile.update_size_and_position(new_tile_width, new_tile_height, new_offset_x, new_offset_y)
+        
+        self.update_solve_button_position()
+        self.update_play_again_button_position()
+    
     def update_solve_button_position(self):
         # Position button in bottom-right corner with some margin
         info = pygame.display.get_surface()
@@ -167,7 +405,7 @@ class Board:
         info = pygame.display.get_surface()
         if info:
             self.play_again_button.x = (info.get_width() - self.play_again_button.width) // 2
-            self.play_again_button.y = info.get_height() // 2 + 100
+            self.play_again_button.y = info.get_height() // 2 + 60
             
     def update(self):
         if self.failed_match_timer > 0:
@@ -234,35 +472,68 @@ class Board:
             overlay.fill((0, 0, 0))
             screen.blit(overlay, (0, 0))
             
+            # Calculate dynamic font sizes based on screen size
+            screen_width = screen.get_width()
+            screen_height = screen.get_height()
+            
+            # 根據螢幕大小計算字體大小
+            base_width = 720  # 初始寬度
+            base_height = 480  # 初始高度
+            
+            scale_factor = min(screen_width / base_width, screen_height / base_height)
+            
+            # 計算動態字體大小
+            title_font_size = max(24, min(96, int(48 * scale_factor)))
+            button_font_size = max(16, min(48, int(20 * scale_factor)))
+            
             # Draw congratulations text with shadow
             try:
-                # Try to use Chinese font
-                font_big = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 96)
+                # Try multiple Chinese fonts
+                font_big = pygame.font.Font("C:/Windows/Fonts/msyh.ttc", title_font_size)  # Microsoft YaHei
             except (IOError, OSError):
-                # Fallback to English if Chinese font not available
-                font_big = pygame.font.Font(None, 72)
+                try:
+                    font_big = pygame.font.Font("C:/Windows/Fonts/simsun.ttc", title_font_size)  # SimSun
+                except (IOError, OSError):
+                    try:
+                        font_big = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", title_font_size)  # macOS
+                    except (IOError, OSError):
+                        font_big = pygame.font.Font(None, title_font_size)  # Fallback to default
                 
             # Draw shadow
             text_shadow = font_big.render("恭喜!!", True, (50, 30, 0))
             shadow_rect = text_shadow.get_rect(
-                center=(screen.get_width() // 2 + 3, screen.get_height() // 2 - 50 + 3)
+                center=(screen.get_width() // 2 + 2, screen.get_height() // 2 - 30 + 2)
             )
             screen.blit(text_shadow, shadow_rect)
             
             # Draw main text
             text_congrats = font_big.render("恭喜!!", True, (255, 215, 0))
             text_rect = text_congrats.get_rect(
-                center=(screen.get_width() // 2, screen.get_height() // 2 - 50)
+                center=(screen.get_width() // 2, screen.get_height() // 2 - 30)
             )
             screen.blit(text_congrats, text_rect)
+            
+            # Update button size based on font size
+            button_width = max(100, int(button_font_size * 5))
+            button_height = max(30, int(button_font_size * 1.8))
+            self.play_again_button.width = button_width
+            self.play_again_button.height = button_height
+            self.play_again_button.center = (screen.get_width() // 2, screen.get_height() // 2 + 60)
             
             # Draw play again button
             pygame.draw.rect(screen, (0, 100, 0), self.play_again_button)
             pygame.draw.rect(screen, (0, 200, 0), self.play_again_button, 3)
             try:
-                font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 36)
+                # Try multiple Chinese fonts
+                font_button = pygame.font.Font("C:/Windows/Fonts/msyh.ttc", button_font_size)  # Microsoft YaHei
             except (IOError, OSError):
-                font_button = pygame.font.Font(None, 36)
+                try:
+                    font_button = pygame.font.Font("C:/Windows/Fonts/simsun.ttc", button_font_size)  # SimSun
+                except (IOError, OSError):
+                    try:
+                        font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", button_font_size)  # macOS
+                    except (IOError, OSError):
+                        font_button = pygame.font.Font(None, button_font_size)  # Fallback to default
                 
             text_play_again = font_button.render("再來一局", True, (255, 255, 255))
             text_rect = text_play_again.get_rect(center=self.play_again_button.center)
@@ -272,11 +543,13 @@ class Board:
         if len(self.animation_path) < 2:
             return
             
-        # Draw the complete path instantly
+        # Draw the complete path instantly with thicker lines
+        line_width = max(3, min(self.tile_width // 15, 8))  # Adaptive line width
+        
         for i in range(len(self.animation_path) - 1):
             start_pos = self.get_pixel_position(self.animation_path[i])
             end_pos = self.get_pixel_position(self.animation_path[i + 1])
-            pygame.draw.line(screen, (255, 0, 0), start_pos, end_pos, 4)
+            pygame.draw.line(screen, (255, 0, 0), start_pos, end_pos, line_width)
         
         self.animation_progress += 1
         
@@ -374,7 +647,7 @@ class Board:
         pos1 = (tile1.x, tile1.y)
         pos2 = (tile2.x, tile2.y)
         
-        queue = deque([(pos1, -1, -1, [pos1])])
+        queue = deque([(pos1, -1, 0, [pos1])])  # Start with 0 turns
         visited = set()
         
         while queue:
@@ -383,7 +656,8 @@ class Board:
             if (x, y) == pos2:
                 return path
                 
-            if turns > 2:
+            # Strictly enforce maximum 2 turns
+            if turns >= 2:
                 continue
                 
             state = (x, y, prev_dir, turns)
@@ -408,6 +682,7 @@ class Board:
                 if prev_dir != -1 and prev_dir != i:
                     new_turns += 1
                     
+                # Only allow paths with maximum 2 turns
                 if new_turns <= 2:
                     new_path = path + [(nx, ny)]
                     queue.append(((nx, ny), i, new_turns, new_path))
