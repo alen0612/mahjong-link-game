@@ -4,15 +4,15 @@ import pygame
 
 from board import Board
 from scrolling_background import ScrollingBackground
-from utils import get_asset_path
+from font_utils import get_chinese_font
 
 # Game states
 START_SCREEN = 0
 PLAYING = 1
 END_SCREEN = 2
 
-INITIAL_WIDTH = 1600
-INITIAL_HEIGHT = 1000
+INITIAL_WIDTH = 1200
+INITIAL_HEIGHT = 800
 INITIAL_TILE_WIDTH = 60
 INITIAL_TILE_HEIGHT = 80  # 3:4 aspect ratio
 BOARD_WIDTH = 14
@@ -158,8 +158,7 @@ def main():
             # Scale font size based on window size
             title_font_size = int(96 * min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT))
             title_font_size = max(title_font_size, 48)  # Minimum font size
-            # Use default font that works on all systems
-            font_title = pygame.font.Font(None, title_font_size)
+            font_title = get_chinese_font(title_font_size)
                 
             # Draw shadow
             text_shadow = font_title.render("麻將連連看", True, (50, 30, 0))
@@ -182,8 +181,7 @@ def main():
             # Scale button font size
             button_font_size = int(36 * min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT))
             button_font_size = max(button_font_size, 20)  # Minimum font size
-            # Use default font that works on all systems
-            font_button = pygame.font.Font(None, button_font_size)
+            font_button = get_chinese_font(button_font_size)
                 
             text_start = font_button.render("開始遊戲", True, (255, 255, 255))
             text_rect = text_start.get_rect(center=start_button.center)
