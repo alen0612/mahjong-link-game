@@ -1,5 +1,6 @@
 import random
 import pygame
+from collections import deque
 from tile import Tile
 
 class Board:
@@ -64,7 +65,6 @@ class Board:
             tile.selected = True
             
             if len(self.selected_tiles) == 2:
-                pygame.time.wait(300)
                 self.check_match()
             
     def check_match(self):
@@ -73,13 +73,58 @@ class Board:
         if tile1.match(tile2) and self.can_connect(tile1, tile2):
             tile1.visible = False
             tile2.visible = False
+            self.tiles[tile1.y][tile1.x] = None
+            self.tiles[tile2.y][tile2.x] = None
             
         for tile in self.selected_tiles:
             tile.selected = False
         self.selected_tiles.clear()
         
     def can_connect(self, tile1, tile2):
-        return True
+        if tile1 == tile2:
+            return False
+            
+        pos1 = (tile1.x, tile1.y)
+        pos2 = (tile2.x, tile2.y)
+        
+        queue = deque([(pos1, -1, -1, -1)])
+        visited = set()
+        
+        while queue:
+            (x, y), prev_dir, turns = queue.popleft()
+            
+            if (x, y) == pos2:
+                return True
+                
+            if turns > 2:
+                continue
+                
+            state = (x, y, prev_dir, turns)
+            if state in visited:
+                continue
+            visited.add(state)
+            
+            directions = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+            
+            for i, (dx, dy) in enumerate(directions):
+                nx, ny = x + dx, y + dy
+                
+                if nx < -1 or nx > self.width or ny < -1 or ny > self.height:
+                    continue
+                    
+                if (nx, ny) != pos2:
+                    if 0 <= nx < self.width and 0 <= ny < self.height:
+                        if self.tiles[ny][nx] and self.tiles[ny][nx].visible:
+                            continue
+                
+                new_turns = turns
+                if prev_dir != -1 and prev_dir != i:
+                    new_turns += 1
+                    
+                if new_turns <= 2:
+                    queue.append(((nx, ny), i, new_turns))
+                    
+        return False
         
     def is_game_complete(self):
         for row in self.tiles:
