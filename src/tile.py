@@ -1,25 +1,47 @@
 import pygame
+import os
 
 class Tile:
-    def __init__(self, x, y, tile_type, size=80):
+    def __init__(self, x, y, tile_type, size=80, offset_x=0, offset_y=0):
         self.x = x
         self.y = y
         self.tile_type = tile_type
         self.size = size
         self.selected = False
         self.visible = True
-        self.rect = pygame.Rect(x * size, y * size, size, size)
+        self.rect = pygame.Rect(x * size + offset_x, y * size + offset_y, size, size)
+        self.image = None
+        self.load_image()
+        
+    def load_image(self):
+        image_path = f"assets/tiles/{self.tile_type}.sve"
+        if os.path.exists(image_path):
+            try:
+                self.image = pygame.image.load(image_path)
+                self.image = pygame.transform.scale(self.image, (self.size, self.size))
+            except:
+                self.image = None
         
     def draw(self, screen):
         if not self.visible:
             return
             
-        color = (100, 100, 100)
-        if self.selected:
-            color = (150, 150, 150)
+        if self.image:
+            screen.blit(self.image, self.rect.topleft)
+        else:
+            color = (100, 100, 100)
+            if self.selected:
+                color = (150, 150, 150)
+            pygame.draw.rect(screen, color, self.rect)
+            pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
             
-        pygame.draw.rect(screen, color, self.rect)
-        pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
+            font = pygame.font.Font(None, 36)
+            text = font.render(str(self.tile_type), True, (255, 255, 255))
+            text_rect = text.get_rect(center=self.rect.center)
+            screen.blit(text, text_rect)
+            
+        if self.selected:
+            pygame.draw.rect(screen, (255, 255, 0), self.rect, 3)
         
     def handle_click(self, pos):
         if self.visible and self.rect.collidepoint(pos):

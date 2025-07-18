@@ -2,19 +2,21 @@ import random
 from tile import Tile
 
 class Board:
-    def __init__(self, width=12, height=6, tile_size=80):
+    def __init__(self, width=12, height=6, tile_size=80, offset_x=0, offset_y=0):
         self.width = width
         self.height = height
         self.tile_size = tile_size
+        self.offset_x = offset_x
+        self.offset_y = offset_y
         self.tiles = []
         self.selected_tiles = []
         self.initialize_board()
         
     def initialize_board(self):
         tile_types = []
-        num_pairs = (self.width * self.height) // 2
+        num_tile_types = 36
         
-        for i in range(num_pairs):
+        for i in range(num_tile_types):
             tile_types.extend([i, i])
             
         random.shuffle(tile_types)
@@ -24,7 +26,7 @@ class Board:
             row = []
             for x in range(self.width):
                 tile_type = tile_types.pop()
-                tile = Tile(x, y, tile_type, self.tile_size)
+                tile = Tile(x, y, tile_type, self.tile_size, self.offset_x, self.offset_y)
                 row.append(tile)
             self.tiles.append(row)
             
