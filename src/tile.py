@@ -14,7 +14,7 @@ class Tile:
         self.load_image()
         
     def load_image(self):
-        image_path = f"assets/tiles/{self.tile_type}.sve"
+        image_path = f"assets/tiles/{self.tile_type}.svg"
         if os.path.exists(image_path):
             try:
                 self.image = pygame.image.load(image_path)
