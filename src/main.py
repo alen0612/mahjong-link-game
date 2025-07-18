@@ -12,12 +12,12 @@ END_SCREEN = 2
 
 INITIAL_WIDTH = 1600
 INITIAL_HEIGHT = 1000
-TILE_WIDTH = 60
-TILE_HEIGHT = 80  # 3:4 aspect ratio
-BOARD_WIDTH = 16
-BOARD_HEIGHT = 8
+INITIAL_TILE_WIDTH = 60
+INITIAL_TILE_HEIGHT = 80  # 3:4 aspect ratio
+BOARD_WIDTH = 14
+BOARD_HEIGHT = 7
 BACKGROUND_COLOR = (40, 40, 40)
-MARGIN = 80  # Not used, but kept for future use
+MARGIN = 80  # Minimum margin around board
 
 def main():
     pygame.init()
@@ -34,25 +34,57 @@ def main():
     screen = pygame.display.set_mode((INITIAL_WIDTH, INITIAL_HEIGHT), pygame.RESIZABLE)
     pygame.display.set_caption("Mahjong Link Game")
     
-    board_pixel_width = BOARD_WIDTH * TILE_WIDTH
-    board_pixel_height = BOARD_HEIGHT * TILE_HEIGHT
-    
     current_width, current_height = INITIAL_WIDTH, INITIAL_HEIGHT
+    
+    def calculate_tile_size():
+        # Calculate tile size based on window size with margins
+        available_width = current_width - 2 * MARGIN
+        available_height = current_height - 2 * MARGIN
+        
+        # Calculate maximum tile size that fits
+        tile_width_from_width = available_width // BOARD_WIDTH
+        tile_height_from_width = int(tile_width_from_width * 4 / 3)  # Maintain 3:4 aspect ratio
+        
+        tile_height_from_height = available_height // BOARD_HEIGHT
+        tile_width_from_height = int(tile_height_from_height * 3 / 4)  # Maintain 3:4 aspect ratio
+        
+        # Use the smaller size to ensure it fits
+        if tile_width_from_width * BOARD_WIDTH <= available_width and tile_height_from_width * BOARD_HEIGHT <= available_height:
+            tile_width = tile_width_from_width
+            tile_height = tile_height_from_width
+        else:
+            tile_width = tile_width_from_height
+            tile_height = tile_height_from_height
+            
+        # Apply minimum and maximum limits
+        tile_width = max(30, min(tile_width, INITIAL_TILE_WIDTH * 2))  # Min 30, max 2x original
+        tile_height = int(tile_width * 4 / 3)  # Maintain aspect ratio
+        
+        return tile_width, tile_height
+    
+    tile_width, tile_height = calculate_tile_size()
+    board_pixel_width = BOARD_WIDTH * tile_width
+    board_pixel_height = BOARD_HEIGHT * tile_height
     game_state = START_SCREEN
     
     # Initialize scrolling background
     scrolling_bg = ScrollingBackground(current_width, current_height)
     
-    # Start screen button
-    start_button = pygame.Rect(0, 0, 200, 60)
-    start_button.center = (current_width // 2, current_height // 2 + 100)
+    # Start screen button (scale with window)
+    scale_factor = min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT)
+    button_width = int(200 * scale_factor)
+    button_height = int(60 * scale_factor)
+    start_button = pygame.Rect(0, 0, button_width, button_height)
+    start_button.center = (current_width // 2, current_height // 2 + int(100 * scale_factor))
     
-    def calculate_board_position():
-        offset_x = (current_width - board_pixel_width) // 2
-        offset_y = (current_height - board_pixel_height) // 2
+    def calculate_board_position(tile_w, tile_h):
+        board_w = BOARD_WIDTH * tile_w
+        board_h = BOARD_HEIGHT * tile_h
+        offset_x = (current_width - board_w) // 2
+        offset_y = (current_height - board_h) // 2
         return offset_x, offset_y
     
-    offset_x, offset_y = calculate_board_position()
+    offset_x, offset_y = calculate_board_position(tile_width, tile_height)
     board = None
     
     clock = pygame.time.Clock()
@@ -65,16 +97,29 @@ def main():
             elif event.type == pygame.VIDEORESIZE:
                 current_width, current_height = event.w, event.h
                 screen = pygame.display.set_mode((current_width, current_height), pygame.RESIZABLE)
-                offset_x, offset_y = calculate_board_position()
+                
+                # Recalculate tile size
+                tile_width, tile_height = calculate_tile_size()
+                board_pixel_width = BOARD_WIDTH * tile_width
+                board_pixel_height = BOARD_HEIGHT * tile_height
+                offset_x, offset_y = calculate_board_position(tile_width, tile_height)
+                
                 if board:
-                    board.update_position(offset_x, offset_y)
+                    board.update_size_and_position(tile_width, tile_height, offset_x, offset_y)
                 scrolling_bg = ScrollingBackground(current_width, current_height)
-                start_button.center = (current_width // 2, current_height // 2 + 100)
+                
+                # Update button size and position on resize
+                scale_factor = min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT)
+                button_width = int(200 * scale_factor)
+                button_height = int(60 * scale_factor)
+                start_button.width = button_width
+                start_button.height = button_height
+                start_button.center = (current_width // 2, current_height // 2 + int(100 * scale_factor))
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if game_state == START_SCREEN:
                     if start_button.collidepoint(event.pos):
                         game_state = PLAYING
-                        board = Board(BOARD_WIDTH, BOARD_HEIGHT, TILE_WIDTH, TILE_HEIGHT, offset_x, offset_y)
+                        board = Board(BOARD_WIDTH, BOARD_HEIGHT, tile_width, tile_height, offset_x, offset_y)
                 elif game_state == PLAYING:
                     if board:
                         board.handle_click(event.pos)
@@ -109,10 +154,13 @@ def main():
             screen.blit(overlay, (0, 0))
             
             # Draw title with shadow effect
+            # Scale font size based on window size
+            title_font_size = int(96 * min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT))
+            title_font_size = max(title_font_size, 48)  # Minimum font size
             try:
-                font_title = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 96)
+                font_title = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", title_font_size)
             except (IOError, OSError):
-                font_title = pygame.font.Font(None, 96)
+                font_title = pygame.font.Font(None, title_font_size)
                 
             # Draw shadow
             text_shadow = font_title.render("麻將連連看", True, (50, 30, 0))
@@ -132,10 +180,13 @@ def main():
             pygame.draw.rect(screen, (0, 100, 0), start_button)
             pygame.draw.rect(screen, (0, 200, 0), start_button, 3)
             
+            # Scale button font size
+            button_font_size = int(36 * min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT))
+            button_font_size = max(button_font_size, 20)  # Minimum font size
             try:
-                font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 36)
+                font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", button_font_size)
             except (IOError, OSError):
-                font_button = pygame.font.Font(None, 36)
+                font_button = pygame.font.Font(None, button_font_size)
                 
             text_start = font_button.render("開始遊戲", True, (255, 255, 255))
             text_rect = text_start.get_rect(center=start_button.center)
