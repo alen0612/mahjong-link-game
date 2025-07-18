@@ -16,15 +16,8 @@ class Tile:
         self.load_image()
         
     def load_image(self):
-        # Map tile types to actual file names
-        # 34 -> 0, 35 -> 1 (since they are duplicates)
-        display_type = self.tile_type
-        if self.tile_type == 34:
-            display_type = 0
-        elif self.tile_type == 35:
-            display_type = 1
-            
-        image_path = f"assets/tiles/{display_type}.svg"
+        # Use tile type directly (0-34)
+        image_path = f"assets/tiles/{self.tile_type}.svg"
         if os.path.exists(image_path):
             try:
                 self.image = pygame.image.load(image_path)
@@ -62,6 +55,7 @@ class Tile:
             screen.blit(overlay, self.rect.topleft)
             pygame.draw.rect(screen, (255, 255, 0), self.rect, 3)
         
+        
     def handle_click(self, pos):
         if self.visible and self.rect.collidepoint(pos):
             self.selected = not self.selected
@@ -70,3 +64,11 @@ class Tile:
         
     def match(self, other):
         return self.tile_type == other.tile_type
+    
+    def update_size(self, new_width, new_height):
+        self.width = new_width
+        self.height = new_height
+        self.rect.width = new_width
+        self.rect.height = new_height
+        # Reload image with new size
+        self.load_image()
