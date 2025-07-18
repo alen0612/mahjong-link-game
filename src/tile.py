@@ -2,6 +2,8 @@ import os
 
 import pygame
 
+from utils import get_asset_path
+
 class Tile:
     def __init__(self, x, y, tile_type, width=60, height=80, offset_x=0, offset_y=0):
         self.x = x
@@ -16,14 +18,14 @@ class Tile:
         self.load_image()
         
     def load_image(self):
-        # Use tile type directly (0-34)
-        image_path = f"assets/tiles/{self.tile_type}.svg"
-        if os.path.exists(image_path):
-            try:
-                self.image = pygame.image.load(image_path)
-                self.image = pygame.transform.scale(self.image, (self.width, self.height))
-            except (pygame.error, IOError, OSError):
-                self.image = None
+        # Use tile type directly (0-33)
+        try:
+            image_path = get_asset_path("tiles", f"{self.tile_type}.svg")
+            self.image = pygame.image.load(image_path)
+            self.image = pygame.transform.scale(self.image, (self.width, self.height))
+        except (pygame.error, IOError, OSError, FileNotFoundError):
+            # If SVG loading fails, create a simple colored rectangle
+            self.image = None
         
     def draw(self, screen):
         if not self.visible:
@@ -39,13 +41,34 @@ class Tile:
             scaled_image = pygame.transform.scale(self.image, (image_rect.width, image_rect.height))
             screen.blit(scaled_image, image_rect.topleft)
         else:
-            color = (100, 100, 100)
-            pygame.draw.rect(screen, color, self.rect)
+            # Draw colored tile based on tile type
+            colors = [
+                (255, 0, 0),    # Red
+                (0, 255, 0),    # Green  
+                (0, 0, 255),    # Blue
+                (255, 255, 0),  # Yellow
+                (255, 0, 255),  # Magenta
+                (0, 255, 255),  # Cyan
+                (255, 128, 0),  # Orange
+                (128, 0, 255),  # Purple
+            ]
+            base_color = colors[self.tile_type % len(colors)]
+            
+            # Draw colored background
+            pygame.draw.rect(screen, base_color, self.rect)
             pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
             
+            # Draw tile number
             font = pygame.font.Font(None, 36)
             text = font.render(str(self.tile_type), True, (255, 255, 255))
             text_rect = text.get_rect(center=self.rect.center)
+            
+            # Add shadow for better readability
+            shadow_text = font.render(str(self.tile_type), True, (0, 0, 0))
+            shadow_rect = text_rect.copy()
+            shadow_rect.x += 2
+            shadow_rect.y += 2
+            screen.blit(shadow_text, shadow_rect)
             screen.blit(text, text_rect)
             
         if self.selected:

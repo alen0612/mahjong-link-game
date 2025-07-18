@@ -4,6 +4,7 @@ import pygame
 
 from board import Board
 from scrolling_background import ScrollingBackground
+from utils import get_asset_path
 
 # Game states
 START_SCREEN = 0
@@ -25,7 +26,7 @@ def main():
     # Initialize background music
     pygame.mixer.init()
     try:
-        pygame.mixer.music.load("assets/audio/background_music.mp3")
+        pygame.mixer.music.load(get_asset_path("audio", "background_music.mp3"))
         pygame.mixer.music.set_volume(0.5)  # Set volume to 50%
         pygame.mixer.music.play(-1)  # -1 means infinite loop
     except pygame.error:
@@ -157,10 +158,8 @@ def main():
             # Scale font size based on window size
             title_font_size = int(96 * min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT))
             title_font_size = max(title_font_size, 48)  # Minimum font size
-            try:
-                font_title = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", title_font_size)
-            except (IOError, OSError):
-                font_title = pygame.font.Font(None, title_font_size)
+            # Use default font that works on all systems
+            font_title = pygame.font.Font(None, title_font_size)
                 
             # Draw shadow
             text_shadow = font_title.render("麻將連連看", True, (50, 30, 0))
@@ -183,10 +182,8 @@ def main():
             # Scale button font size
             button_font_size = int(36 * min(current_width / INITIAL_WIDTH, current_height / INITIAL_HEIGHT))
             button_font_size = max(button_font_size, 20)  # Minimum font size
-            try:
-                font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", button_font_size)
-            except (IOError, OSError):
-                font_button = pygame.font.Font(None, button_font_size)
+            # Use default font that works on all systems
+            font_button = pygame.font.Font(None, button_font_size)
                 
             text_start = font_button.render("開始遊戲", True, (255, 255, 255))
             text_rect = text_start.get_rect(center=start_button.center)
