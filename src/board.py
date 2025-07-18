@@ -3,6 +3,7 @@ import pygame
 from collections import deque
 from copy import deepcopy
 from tile import Tile
+from particle import Firework
 
 class Board:
     def __init__(self, width=12, height=6, tile_width=60, tile_height=80, offset_x=0, offset_y=0):
@@ -24,6 +25,11 @@ class Board:
         self.solve_timer = 0
         self.solve_button = pygame.Rect(0, 0, 100, 40)
         self.update_solve_button_position()
+        self.game_completed = False
+        self.fireworks = []
+        self.firework_timer = 0
+        self.play_again_button = pygame.Rect(0, 0, 150, 50)
+        self.update_play_again_button_position()
         self.initialize_board()
         
     def initialize_board(self):
@@ -140,6 +146,7 @@ class Board:
                     tile.rect.x = tile.x * self.tile_width + self.offset_x
                     tile.rect.y = tile.y * self.tile_height + self.offset_y
         self.update_solve_button_position()
+        self.update_play_again_button_position()
     
     def update_solve_button_position(self):
         # Position button in bottom-right corner with some margin
@@ -148,6 +155,14 @@ class Board:
         if info:
             self.solve_button.x = info.get_width() - self.solve_button.width - 20
             self.solve_button.y = info.get_height() - self.solve_button.height - 20
+            
+    def update_play_again_button_position(self):
+        # Position button in center of screen
+        import pygame
+        info = pygame.display.get_surface()
+        if info:
+            self.play_again_button.x = (info.get_width() - self.play_again_button.width) // 2
+            self.play_again_button.y = info.get_height() // 2 + 50
             
     def update(self):
         if self.failed_match_timer > 0:
@@ -164,6 +179,23 @@ class Board:
             if self.solve_timer >= 7:
                 self.solve_timer = 0
                 self.auto_solve_step()
+                
+        if self.game_completed:
+            # Update fireworks
+            for firework in self.fireworks[:]:
+                firework.update()
+                if not firework.is_alive():
+                    self.fireworks.remove(firework)
+                    
+            # Add new fireworks periodically
+            self.firework_timer += 1
+            if self.firework_timer >= 20:  # Every 20 frames
+                self.firework_timer = 0
+                info = pygame.display.get_surface()
+                if info:
+                    x = random.randint(100, info.get_width() - 100)
+                    y = info.get_height() - 50
+                    self.fireworks.append(Firework(x, y))
     
     def draw(self, screen):
         for row in self.tiles:
@@ -174,13 +206,50 @@ class Board:
         if self.animating and self.animation_path:
             self.draw_animation(screen)
             
-        # Draw solve button
-        pygame.draw.rect(screen, (100, 100, 100), self.solve_button)
-        pygame.draw.rect(screen, (200, 200, 200), self.solve_button, 2)
-        font = pygame.font.Font(None, 24)
-        text = font.render("SOLVE", True, (255, 255, 255))
-        text_rect = text.get_rect(center=self.solve_button.center)
-        screen.blit(text, text_rect)
+        # Draw solve button only if game is not completed
+        if not self.game_completed:
+            pygame.draw.rect(screen, (100, 100, 100), self.solve_button)
+            pygame.draw.rect(screen, (200, 200, 200), self.solve_button, 2)
+            font = pygame.font.Font(None, 24)
+            text = font.render("SOLVE", True, (255, 255, 255))
+            text_rect = text.get_rect(center=self.solve_button.center)
+            screen.blit(text, text_rect)
+            
+        # Draw celebration if game is completed
+        if self.game_completed:
+            # Draw fireworks
+            for firework in self.fireworks:
+                firework.draw(screen)
+                
+            # Draw semi-transparent overlay
+            overlay = pygame.Surface((screen.get_width(), screen.get_height()))
+            overlay.set_alpha(100)
+            overlay.fill((0, 0, 0))
+            screen.blit(overlay, (0, 0))
+            
+            # Draw congratulations text
+            try:
+                # Try to use Chinese font
+                font_big = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 72)
+            except:
+                # Fallback to English if Chinese font not available
+                font_big = pygame.font.Font(None, 72)
+                
+            text_congrats = font_big.render("恭喜!!", True, (255, 255, 0))
+            text_rect = text_congrats.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 50))
+            screen.blit(text_congrats, text_rect)
+            
+            # Draw play again button
+            pygame.draw.rect(screen, (0, 150, 0), self.play_again_button)
+            pygame.draw.rect(screen, (0, 255, 0), self.play_again_button, 3)
+            try:
+                font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 36)
+            except:
+                font_button = pygame.font.Font(None, 36)
+                
+            text_play_again = font_button.render("再來一局", True, (255, 255, 255))
+            text_rect = text_play_again.get_rect(center=self.play_again_button.center)
+            screen.blit(text_play_again, text_rect)
             
     def draw_animation(self, screen):
         if len(self.animation_path) < 2:
@@ -217,12 +286,20 @@ class Board:
         self.animating = False
         self.tiles_to_remove = []
         
-        # Check if game is complete during auto-solve
-        if self.auto_solving and self.is_game_complete():
-            self.auto_solving = False
+        # Check if game is complete
+        if self.is_game_complete():
+            self.game_completed = True
+            if self.auto_solving:
+                self.auto_solving = False
                     
     def handle_click(self, pos):
         if self.animating or self.failed_match_timer > 0 or self.auto_solving:
+            return
+            
+        # Check if game is completed and play again button was clicked
+        if self.game_completed:
+            if self.play_again_button.collidepoint(pos):
+                self.restart_game()
             return
             
         # Check if solve button was clicked
@@ -366,3 +443,21 @@ class Board:
         
         # No more matches found, stop auto-solving
         self.auto_solving = False
+        
+    def restart_game(self):
+        # Reset all game state
+        self.tiles = []
+        self.selected_tiles = []
+        self.animation_path = []
+        self.animation_progress = 0
+        self.animating = False
+        self.tiles_to_remove = []
+        self.failed_match_timer = 0
+        self.failed_match_tiles = []
+        self.auto_solving = False
+        self.solve_timer = 0
+        self.game_completed = False
+        self.fireworks = []
+        self.firework_timer = 0
+        # Initialize a new board
+        self.initialize_board()
