@@ -1,5 +1,6 @@
-import pygame
 import os
+
+import pygame
 
 class Tile:
     def __init__(self, x, y, tile_type, width=60, height=80, offset_x=0, offset_y=0):
@@ -28,7 +29,7 @@ class Tile:
             try:
                 self.image = pygame.image.load(image_path)
                 self.image = pygame.transform.scale(self.image, (self.width, self.height))
-            except:
+            except (pygame.error, IOError, OSError):
                 self.image = None
         
     def draw(self, screen):

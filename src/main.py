@@ -1,5 +1,7 @@
-import pygame
 import sys
+
+import pygame
+
 from board import Board
 from scrolling_background import ScrollingBackground
 
@@ -15,7 +17,7 @@ TILE_HEIGHT = 80  # 3:4 aspect ratio
 BOARD_WIDTH = 16
 BOARD_HEIGHT = 8
 BACKGROUND_COLOR = (40, 40, 40)
-MARGIN = 80
+MARGIN = 80  # Not used, but kept for future use
 
 def main():
     pygame.init()
@@ -109,17 +111,21 @@ def main():
             # Draw title with shadow effect
             try:
                 font_title = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 96)
-            except:
+            except (IOError, OSError):
                 font_title = pygame.font.Font(None, 96)
                 
             # Draw shadow
             text_shadow = font_title.render("麻將連連看", True, (50, 30, 0))
-            shadow_rect = text_shadow.get_rect(center=(current_width // 2 + 3, current_height // 2 - 100 + 3))
+            shadow_rect = text_shadow.get_rect(
+                center=(current_width // 2 + 3, current_height // 2 - 100 + 3)
+            )
             screen.blit(text_shadow, shadow_rect)
             
             # Draw main text
             text_title = font_title.render("麻將連連看", True, (255, 215, 0))
-            title_rect = text_title.get_rect(center=(current_width // 2, current_height // 2 - 100))
+            title_rect = text_title.get_rect(
+                center=(current_width // 2, current_height // 2 - 100)
+            )
             screen.blit(text_title, title_rect)
             
             # Draw start button
@@ -128,7 +134,7 @@ def main():
             
             try:
                 font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 36)
-            except:
+            except (IOError, OSError):
                 font_button = pygame.font.Font(None, 36)
                 
             text_start = font_button.render("開始遊戲", True, (255, 255, 255))
