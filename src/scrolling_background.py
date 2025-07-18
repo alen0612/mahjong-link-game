@@ -2,6 +2,7 @@ import os
 import random
 
 import pygame
+from utils import resource_path
 
 class ScrollingTile:
     def __init__(self, x, y, tile_type, speed):
@@ -21,15 +22,14 @@ class ScrollingTile:
         elif self.tile_type == 35:
             display_type = 1
             
-        image_path = f"assets/tiles/{display_type}.svg"
-        if os.path.exists(image_path):
-            try:
-                self.image = pygame.image.load(image_path)
-                self.image = pygame.transform.scale(self.image, (self.width, self.height))
-                # Make it semi-transparent
-                self.image.set_alpha(100)
-            except (pygame.error, IOError, OSError):
-                self.image = None
+        image_path = resource_path(os.path.join("assets", "tiles", f"{display_type}.svg"))
+        try:
+            self.image = pygame.image.load(image_path)
+            self.image = pygame.transform.scale(self.image, (self.width, self.height))
+            # Make it semi-transparent
+            self.image.set_alpha(100)
+        except (pygame.error, IOError, OSError):
+            self.image = None
                 
     def update(self):
         self.x += self.speed
@@ -70,8 +70,12 @@ class ScrollingBackground:
         self.row_configs = []
         
         # Configure each row with different starting positions and y coordinates
+        # Center the background tiles vertically
+        total_height = (num_rows - 1) * self.tile_spacing_y
+        start_y = (screen_height - total_height) // 2
+        
         for i in range(num_rows):
-            y_base = 50 + i * self.tile_spacing_y
+            y_base = start_y + i * self.tile_spacing_y
             # Alternate rows start at different x positions for diagonal effect
             x_offset = (i % 2) * (self.tile_spacing_x / 2)
             self.row_configs.append({
