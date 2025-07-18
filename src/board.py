@@ -28,7 +28,7 @@ class Board:
         self.game_completed = False
         self.fireworks = []
         self.firework_timer = 0
-        self.play_again_button = pygame.Rect(0, 0, 150, 50)
+        self.play_again_button = pygame.Rect(0, 0, 200, 60)
         self.update_play_again_button_position()
         self.initialize_board()
         
@@ -162,7 +162,7 @@ class Board:
         info = pygame.display.get_surface()
         if info:
             self.play_again_button.x = (info.get_width() - self.play_again_button.width) // 2
-            self.play_again_button.y = info.get_height() // 2 + 50
+            self.play_again_button.y = info.get_height() // 2 + 100
             
     def update(self):
         if self.failed_match_timer > 0:
@@ -227,21 +227,27 @@ class Board:
             overlay.fill((0, 0, 0))
             screen.blit(overlay, (0, 0))
             
-            # Draw congratulations text
+            # Draw congratulations text with shadow
             try:
                 # Try to use Chinese font
-                font_big = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 72)
+                font_big = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 96)
             except:
                 # Fallback to English if Chinese font not available
                 font_big = pygame.font.Font(None, 72)
                 
-            text_congrats = font_big.render("恭喜!!", True, (255, 255, 0))
+            # Draw shadow
+            text_shadow = font_big.render("恭喜!!", True, (50, 30, 0))
+            shadow_rect = text_shadow.get_rect(center=(screen.get_width() // 2 + 3, screen.get_height() // 2 - 50 + 3))
+            screen.blit(text_shadow, shadow_rect)
+            
+            # Draw main text
+            text_congrats = font_big.render("恭喜!!", True, (255, 215, 0))
             text_rect = text_congrats.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 50))
             screen.blit(text_congrats, text_rect)
             
             # Draw play again button
-            pygame.draw.rect(screen, (0, 150, 0), self.play_again_button)
-            pygame.draw.rect(screen, (0, 255, 0), self.play_again_button, 3)
+            pygame.draw.rect(screen, (0, 100, 0), self.play_again_button)
+            pygame.draw.rect(screen, (0, 200, 0), self.play_again_button, 3)
             try:
                 font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 36)
             except:
@@ -446,6 +452,7 @@ class Board:
         
     def restart_game(self):
         # Reset all game state
+        self.game_completed = False  # Set this first so main.py can detect the change
         self.tiles = []
         self.selected_tiles = []
         self.animation_path = []
@@ -456,7 +463,6 @@ class Board:
         self.failed_match_tiles = []
         self.auto_solving = False
         self.solve_timer = 0
-        self.game_completed = False
         self.fireworks = []
         self.firework_timer = 0
         # Initialize a new board
