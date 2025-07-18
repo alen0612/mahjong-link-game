@@ -1,12 +1,14 @@
 import random
-import pygame
 from collections import deque
-from copy import deepcopy
-from tile import Tile
+
+import pygame
+
 from particle import Firework
+from tile import Tile
 
 class Board:
-    def __init__(self, width=16, height=8, tile_width=60, tile_height=80, offset_x=0, offset_y=0):
+    def __init__(self, width=16, height=8, tile_width=60, tile_height=80,
+                 offset_x=0, offset_y=0):
         self.width = width
         self.height = height
         self.tile_width = tile_width
@@ -55,7 +57,8 @@ class Board:
                 row = []
                 for x in range(self.width):
                     tile_type = tile_types.pop()
-                    tile = Tile(x, y, tile_type, self.tile_width, self.tile_height, self.offset_x, self.offset_y)
+                    tile = Tile(x, y, tile_type, self.tile_width, self.tile_height,
+                               self.offset_x, self.offset_y)
                     row.append(tile)
                 tiles.append(row)
                 
@@ -154,7 +157,6 @@ class Board:
     
     def update_solve_button_position(self):
         # Position button in bottom-right corner with some margin
-        import pygame
         info = pygame.display.get_surface()
         if info:
             self.solve_button.x = info.get_width() - self.solve_button.width - 20
@@ -162,7 +164,6 @@ class Board:
             
     def update_play_again_button_position(self):
         # Position button in center of screen
-        import pygame
         info = pygame.display.get_surface()
         if info:
             self.play_again_button.x = (info.get_width() - self.play_again_button.width) // 2
@@ -237,18 +238,22 @@ class Board:
             try:
                 # Try to use Chinese font
                 font_big = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 96)
-            except:
+            except (IOError, OSError):
                 # Fallback to English if Chinese font not available
                 font_big = pygame.font.Font(None, 72)
                 
             # Draw shadow
             text_shadow = font_big.render("恭喜!!", True, (50, 30, 0))
-            shadow_rect = text_shadow.get_rect(center=(screen.get_width() // 2 + 3, screen.get_height() // 2 - 50 + 3))
+            shadow_rect = text_shadow.get_rect(
+                center=(screen.get_width() // 2 + 3, screen.get_height() // 2 - 50 + 3)
+            )
             screen.blit(text_shadow, shadow_rect)
             
             # Draw main text
             text_congrats = font_big.render("恭喜!!", True, (255, 215, 0))
-            text_rect = text_congrats.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 - 50))
+            text_rect = text_congrats.get_rect(
+                center=(screen.get_width() // 2, screen.get_height() // 2 - 50)
+            )
             screen.blit(text_congrats, text_rect)
             
             # Draw play again button
@@ -256,7 +261,7 @@ class Board:
             pygame.draw.rect(screen, (0, 200, 0), self.play_again_button, 3)
             try:
                 font_button = pygame.font.Font("/System/Library/Fonts/STHeiti Medium.ttc", 36)
-            except:
+            except (IOError, OSError):
                 font_button = pygame.font.Font(None, 36)
                 
             text_play_again = font_button.render("再來一局", True, (255, 255, 255))

@@ -1,6 +1,6 @@
-import pygame
 import random
-import math
+
+import pygame
 
 class Particle:
     def __init__(self, x, y, color=None):

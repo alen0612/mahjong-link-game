@@ -1,6 +1,7 @@
-import pygame
-import random
 import os
+import random
+
+import pygame
 
 class ScrollingTile:
     def __init__(self, x, y, tile_type, speed):
@@ -27,7 +28,7 @@ class ScrollingTile:
                 self.image = pygame.transform.scale(self.image, (self.width, self.height))
                 # Make it semi-transparent
                 self.image.set_alpha(100)
-            except:
+            except (pygame.error, IOError, OSError):
                 self.image = None
                 
     def update(self):
@@ -118,7 +119,8 @@ class ScrollingBackground:
             # Need to check the leftmost tile (first in list since we spawn from left)
             if tiles:
                 leftmost_tile = min(tiles, key=lambda t: t.x)
-                # Spawn new tile if the leftmost has moved far enough from the left edge
+                # Spawn new tile if the leftmost has moved far enough
+                # from the left edge
                 if leftmost_tile.x > -50:
                     new_x = leftmost_tile.x - self.tile_spacing_x
                     self.spawn_tile_in_row(row_idx, new_x)
