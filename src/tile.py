@@ -26,8 +26,15 @@ class Tile:
         if not self.visible:
             return
             
+        # Draw white background for tile
+        pygame.draw.rect(screen, (255, 255, 255), self.rect)
+        pygame.draw.rect(screen, (180, 180, 180), self.rect, 2)
+        
         if self.image:
-            screen.blit(self.image, self.rect.topleft)
+            # Create a slightly smaller rect for the image to show border
+            image_rect = self.rect.inflate(-4, -4)
+            scaled_image = pygame.transform.scale(self.image, (image_rect.width, image_rect.height))
+            screen.blit(scaled_image, image_rect.topleft)
         else:
             color = (100, 100, 100)
             pygame.draw.rect(screen, color, self.rect)
