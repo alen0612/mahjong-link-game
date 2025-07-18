@@ -26,7 +26,7 @@ def main():
     # Initialize background music
     pygame.mixer.init()
     try:
-        pygame.mixer.music.load("assets/audio/background_music.mp3")
+        pygame.mixer.music.load(get_asset_path("audio", "background_music.mp3"))
         pygame.mixer.music.set_volume(0.5)  # Set volume to 50%
         pygame.mixer.music.play(-1)  # -1 means infinite loop
     except pygame.error:

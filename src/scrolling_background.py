@@ -3,6 +3,8 @@ import random
 
 import pygame
 
+from utils import get_asset_path
+
 class ScrollingTile:
     def __init__(self, x, y, tile_type, speed):
         self.x = x
@@ -15,21 +17,14 @@ class ScrollingTile:
         self.load_image()
         
     def load_image(self):
-        display_type = self.tile_type
-        if self.tile_type == 34:
-            display_type = 0
-        elif self.tile_type == 35:
-            display_type = 1
-            
-        image_path = f"assets/tiles/{display_type}.svg"
-        if os.path.exists(image_path):
-            try:
-                self.image = pygame.image.load(image_path)
-                self.image = pygame.transform.scale(self.image, (self.width, self.height))
-                # Make it semi-transparent
-                self.image.set_alpha(100)
-            except (pygame.error, IOError, OSError):
-                self.image = None
+        try:
+            image_path = get_asset_path("tiles", f"{self.tile_type}.svg")
+            self.image = pygame.image.load(image_path)
+            self.image = pygame.transform.scale(self.image, (self.width, self.height))
+            # Make it semi-transparent
+            self.image.set_alpha(100)
+        except (pygame.error, IOError, OSError, FileNotFoundError):
+            self.image = None
                 
     def update(self):
         self.x += self.speed
