@@ -20,6 +20,15 @@ MARGIN = 80
 def main():
     pygame.init()
     
+    # Initialize background music
+    pygame.mixer.init()
+    try:
+        pygame.mixer.music.load("assets/audio/background_music.mp3")
+        pygame.mixer.music.set_volume(0.5)  # Set volume to 50%
+        pygame.mixer.music.play(-1)  # -1 means infinite loop
+    except pygame.error:
+        print("Could not load background music")
+    
     screen = pygame.display.set_mode((INITIAL_WIDTH, INITIAL_HEIGHT), pygame.RESIZABLE)
     pygame.display.set_caption("Mahjong Link Game")
     
@@ -141,6 +150,8 @@ def main():
         pygame.display.flip()
         clock.tick(60)
     
+    # Stop music before quitting
+    pygame.mixer.music.stop()
     pygame.quit()
     sys.exit()
 
