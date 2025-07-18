@@ -30,8 +30,6 @@ class Tile:
             screen.blit(self.image, self.rect.topleft)
         else:
             color = (100, 100, 100)
-            if self.selected:
-                color = (150, 150, 150)
             pygame.draw.rect(screen, color, self.rect)
             pygame.draw.rect(screen, (200, 200, 200), self.rect, 2)
             
@@ -41,6 +39,10 @@ class Tile:
             screen.blit(text, text_rect)
             
         if self.selected:
+            overlay = pygame.Surface((self.size, self.size))
+            overlay.set_alpha(100)
+            overlay.fill((255, 255, 0))
+            screen.blit(overlay, self.rect.topleft)
             pygame.draw.rect(screen, (255, 255, 0), self.rect, 3)
         
     def handle_click(self, pos):
